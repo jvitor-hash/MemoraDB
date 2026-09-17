@@ -1,57 +1,83 @@
 import socket
 import threading
+import struct
+
+from protocol.reader import MessageReader
+from protocol.writer import MessageWriter
+from protocol.constants import (
+    QUERY,
+    TERMINATE,
+    AUTHENTICATION,
+    READY_FOR_QUERY,
+)
+
 
 HOST = "127.0.0.1"
-PORT = 5432
+PORT = 5433
 
 
-def handle_client(conn: socket.socket, address: tuple[str, int]):
-    print(f"[+] Client connected: {address}")
+def handle_client(conn, address):
+    print(f"[+] Connection: {address}")
+
+    reader = MessageReader(conn)
+    writer = MessageWriter(conn)
 
     try:
+        length = reader.read_uint32()
+
+        startup_payload = reader.read_exact(length - 4)
+
+        protocol_version = struct.unpack("!I", startup_payload[:4])[0]
+
+        print(f"[+] PostgreSQL protocol: {protocol_version}")
+
+        # Connection is: AuthenticationOk
+        writer.send_message(AUTHENTICATION, struct.pack("!I", 0))
+
+
+        # Send to client that the server is ready to query.
+        writer.send_message(READY_FOR_QUERY, b"I")
+
+        # Message loop
         while True:
-            data = conn.recv(1024)
+            message_type, payload = (reader.read_message())
 
-            if not data:
+            if message_type == QUERY:
+                query = payload.rstrip(b"\x00").decode("utf-8")
+                print(f"[SQL] {query}")
+
+            elif message_type == TERMINATE:
+                print("[+] Client terminated")
                 break
+            else:
+                print(f"[?] Message: {message_type!r}")
 
-            message = data.decode("utf-8")
-
-            print(f"[{address}] → {message}")
-
-            response = "world"
-            conn.sendall(response.encode("utf-8"))
-
-    except ConnectionResetError:
-        print(f"[!] Client forcibly disconnected: {address}")
+    except ConnectionError:
+        print("[-] Connection closed")
 
     finally:
         conn.close()
-        print(f"[-] Client disconnected: {address}")
 
 
 def start_server():
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        # Allows immediate restart after stopping the server.
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         server.bind((HOST, PORT))
         server.listen()
 
-        print(f"[*] Server listening on {HOST}:{PORT}")
+        print(f"[*] MemoraDB running listening on {HOST}:{PORT}")
 
         while True:
             conn, address = server.accept()
 
-            thread = threading.Thread(
+            threading.Thread(
                 target=handle_client,
                 args=(conn, address),
                 daemon=True,
-            )
-
-            thread.start()
+            ).start()
 
 
 if __name__ == "__main__":
     start_server()
-    

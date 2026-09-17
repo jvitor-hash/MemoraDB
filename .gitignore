@@ -1,2 +1,4 @@
+back-end-pg/
+__pycache__/
 TODO.md
 .venv
