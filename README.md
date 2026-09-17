@@ -4,10 +4,11 @@ This is a postgreSQL database sandbox written in python that can be used with dr
 
 ### Objectives
 
-- Raw TCP server
-- Binary protocol
-- PostgreSQL Startup Protocol
-- PostgreSQL message framework
+- Raw TCP server [✓]
+- Binary protocol [✓]
+- PostgreSQL Startup Protocol [✓]
+- PostgreSQL message framework [✓]
+- Message dispatcher (Query, Parse, Bind, Execute, Terminate)
 - In-memory database
 - SQL tokenizer
 - SQL parser
