@@ -1,38 +1,10 @@
 import struct
 
 
-HEADER_SIZE = 5 # The size of the header in bytes (header + payload)
-
-def encode_message(message_type: int, payload: bytes) -> bytes:
-    length = len(payload)
-
-    # !BI -> convert python values into raw bytes.
-    # ! B I
-    # │ │ │
-    # │ │ └── unsigned 4-byte integer
-    # │ └──── unsigned 1-byte integer
-    # └────── network byte order (big-endian)
-    header = struct.pack(
-        "!BI",
-        message_type,
-        length,
-    )
-
-    return header + payload
-
-def decode_message(conn):
-    header = recv_exact(conn, HEADER_SIZE)
-
-    message_type, length = struct.unpack(
-        "!BI",
-        header,
-    )
-
-    payload = recv_exact(conn, length)
-
-    return message_type, payload
-
 def recv_exact(conn, size: int) -> bytes:
+    """ 
+    Forces the recv method to be a method that returns exactly the correct data based on the length otherwise it will return a ConnectionError.
+    """
     data = bytearray()
 
     while len(data) < size:
@@ -44,3 +16,56 @@ def recv_exact(conn, size: int) -> bytes:
         data.extend(chunk)
 
     return bytes(data)
+
+def read_startup_message(conn):
+    # First 4 bytes = total message length
+    length_bytes = recv_exact(conn, 4)
+    
+    length = struct.unpack("!I", length_bytes)[0]
+    
+    # Length includes the 4-byte length field itself.
+    payload = recv_exact(conn, length - 4)
+    
+    protocol_version = struct.unpack("!I", payload[:4])[0]
+    
+    parameters_data = payload[4:]
+    parameters = {}
+    
+    parts = parameters_data.rstrip(b"\x00").split(b"\x00")
+    
+    for i in range(0, len(parts), 2):
+        key = parts[i].decode("utf-8")
+        value = parts[i + 1].decode("utf-8")
+        
+        parameters[key] = value
+        
+    return protocol_version, parameters
+
+def make_message(message_type: bytes, payload: bytes) -> bytes:
+    """
+    PostgreSQL backend message:
+        1 byte  = message type
+        4 bytes = length INCLUDING the 4-byte length field
+        N bytes = payload
+    """
+    
+    length = 4 + len(payload)
+    
+    return (message_type + struct.pack("!I", length) + payload)
+
+
+def authentication_ok() -> bytes:
+    # 'R' = Authentication
+    # 4 = length
+    # 0 = AuthenticationOk
+    payload = struct.pack("!I", 0)
+
+    return make_message(b"R", payload)
+
+
+def ready_for_query() -> bytes:
+    # 'Z' = ReadyForQuery
+    # 4 + 1 = 5
+    # 'I' = idle transaction state
+
+    return make_message(b"Z", b"I")

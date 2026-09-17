@@ -1,39 +1,52 @@
 import socket
 import threading
 
-from protocol import encode_message, decode_message
+from protocol import (
+    read_startup_message,
+    authentication_ok,
+    ready_for_query,
+)
 
 
 HOST = "127.0.0.1"
-PORT = 8888
-
-MESSAGE_HELLO = 1
-MESSAGE_WORLD = 2
+PORT = 5433
 
 
 def handle_client(conn: socket.socket, address):
-    print(f"[+] Client connected: {address}")
+    print(f"[+] Connection from {address}")
 
     try:
+        protocol_version, parameters = read_startup_message(conn)
+
+        print(f"[+] Protocol version: {protocol_version}")
+        print(f"[+] Parameters: {parameters}")
+
+        user = parameters.get("user")
+        database = parameters.get("database")
+
+        print(f"[+] User: {user}")
+        print(f"[+] Database: {database}")
+
+        # For now: accept everyone.
+        conn.sendall(authentication_ok())
+
+        # Tell the client startup is complete.
+        conn.sendall(ready_for_query())
+
+        print("[+] Client is ready for queries")
+
+        # Phase 3 will handle Query messages here.
+
         while True:
-            message_type, payload = decode_message(conn)
+            data = conn.recv(1024)
 
-            print(
-                f"[{address}] "
-                f"type={message_type} "
-                f"payload={payload!r}"
-            )
+            if not data:
+                break
 
-            if message_type == MESSAGE_HELLO:
-                response = encode_message(
-                    MESSAGE_WORLD,
-                    b"world",
-                )
-
-                conn.sendall(response)
+            print(f"[DEBUG] Received: {data.hex()}")
 
     except ConnectionError:
-        print(f"[-] Client disconnected: {address}")
+        print("[-] Client disconnected")
 
     finally:
         conn.close()
@@ -41,6 +54,7 @@ def handle_client(conn: socket.socket, address):
 
 def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+
         server.setsockopt(
             socket.SOL_SOCKET,
             socket.SO_REUSEADDR,
@@ -50,6 +64,7 @@ def start_server():
         server.bind((HOST, PORT))
         server.listen()
 
+        print(f"[*] MemoraDB server")
         print(f"[*] Listening on {HOST}:{PORT}")
 
         while True:
