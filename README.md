@@ -10,9 +10,6 @@ This is a postgreSQL database sandbox written in python that can be used with dr
 - PostgreSQL message framework [✓]
 - Message dispatcher (Query, Parse, Bind, Execute, Terminate)
 - In-memory database
-- SQL tokenizer
-- SQL parser
-- Query executor
 - Table relations
 - PostgreSQL types
 - Drizzle compatibility
