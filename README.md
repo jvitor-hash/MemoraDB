@@ -4,18 +4,18 @@ This is a postgreSQL database sandbox written in python that can be used with dr
 
 ### Objectives
 
-[] Raw TCP server
-[] Binary protocol
-[] PostgreSQL Startup Protocol
-[] PostgreSQL message framework
-[] In-memory database
-[] SQL tokenizer
-[] SQL parser
-[] Query executor
-[] Table relations
-[] PostgreSQL types
-[] Drizzle compatibility
-[] Prepared statements
-[] Transactions
-[] Constraints
-[] Performance optimization
+- Raw TCP server
+- Binary protocol
+- PostgreSQL Startup Protocol
+- PostgreSQL message framework
+- In-memory database
+- SQL tokenizer
+- SQL parser
+- Query executor
+- Table relations
+- PostgreSQL types
+- Drizzle compatibility
+- Prepared statements
+- Transactions
+- Constraints
+- Performance optimization
