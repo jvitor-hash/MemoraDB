@@ -8,6 +8,9 @@ from protocol.constants import (
     EXECUTE,
     TERMINATE,
 )
+from protocol.messages import (
+    Query
+)
 
 
 class MessageDispatcher:
@@ -16,7 +19,7 @@ class MessageDispatcher:
         self.writer = writer
         
         self.executor = Executor()
-        self.simple_query = SimpleQueryExecutor(self.executor)
+        self.simple_query = SimpleQueryExecutor(self.executor, self.writer)
         
         self.prepared = PreparedStatementManager()
         self.portals = PortalManager()
@@ -41,10 +44,10 @@ class MessageDispatcher:
         return True
     
     def handle_query(self, payload):
-        query = payload.rstrip(b"\x00").decode("utf-8")
-        print(f"[QUERY] {query}")
+        message = Query.decode(payload)
+        print(f"[QUERY] {message.query}")
         
-        result = self.simple_query.execute(query)
+        result = self.simple_query.execute(message.query)
         
         print(result)
         
@@ -52,12 +55,15 @@ class MessageDispatcher:
         
     def handle_parse(self, payload):
         print(f"[PARSE] {payload!r}")
+        return True
         
     def handle_bind(self, payload):
         print(f"[BIND] {payload!r}")
+        return True
 
     def handle_execute(self, payload):
         print(f"[EXECUTE] {payload!r}")
+        return True
 
     def handle_terminate(self, payload):
         print("[TERMINATE]")

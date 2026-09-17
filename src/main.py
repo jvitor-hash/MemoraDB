@@ -35,7 +35,6 @@ def handle_client(conn, address):
         # Connection is: AuthenticationOk
         writer.send_message(AUTHENTICATION, struct.pack("!I", 0))
 
-
         # Send to client that the server is ready to query.
         writer.send_message(READY_FOR_QUERY, b"I")
 
