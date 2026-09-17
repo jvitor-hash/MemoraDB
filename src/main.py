@@ -1,44 +1,56 @@
 import socket
 import threading
 
+from protocol import encode_message, decode_message
+
+
 HOST = "127.0.0.1"
-PORT = 5432
+PORT = 8888
+
+MESSAGE_HELLO = 1
+MESSAGE_WORLD = 2
 
 
-def handle_client(conn: socket.socket, address: tuple[str, int]):
+def handle_client(conn: socket.socket, address):
     print(f"[+] Client connected: {address}")
 
     try:
         while True:
-            data = conn.recv(1024)
+            message_type, payload = decode_message(conn)
 
-            if not data:
-                break
+            print(
+                f"[{address}] "
+                f"type={message_type} "
+                f"payload={payload!r}"
+            )
 
-            message = data.decode("utf-8")
+            if message_type == MESSAGE_HELLO:
+                response = encode_message(
+                    MESSAGE_WORLD,
+                    b"world",
+                )
 
-            print(f"[{address}] → {message}")
+                conn.sendall(response)
 
-            response = "world"
-            conn.sendall(response.encode("utf-8"))
-
-    except ConnectionResetError:
-        print(f"[!] Client forcibly disconnected: {address}")
+    except ConnectionError:
+        print(f"[-] Client disconnected: {address}")
 
     finally:
         conn.close()
-        print(f"[-] Client disconnected: {address}")
 
 
 def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        # Allows immediate restart after stopping the server.
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_REUSEADDR,
+            1,
+        )
 
         server.bind((HOST, PORT))
         server.listen()
 
-        print(f"[*] Server listening on {HOST}:{PORT}")
+        print(f"[*] Listening on {HOST}:{PORT}")
 
         while True:
             conn, address = server.accept()
@@ -54,4 +66,3 @@ def start_server():
 
 if __name__ == "__main__":
     start_server()
-    
