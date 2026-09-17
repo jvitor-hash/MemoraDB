@@ -2,6 +2,7 @@ import socket
 import threading
 import struct
 
+from .dispatcher import MessageDispatcher
 from protocol.reader import MessageReader
 from protocol.writer import MessageWriter
 from protocol.constants import (
@@ -34,23 +35,17 @@ def handle_client(conn, address):
         # Connection is: AuthenticationOk
         writer.send_message(AUTHENTICATION, struct.pack("!I", 0))
 
-
         # Send to client that the server is ready to query.
         writer.send_message(READY_FOR_QUERY, b"I")
+
+        dispatcher = MessageDispatcher(writer)
 
         # Message loop
         while True:
             message_type, payload = (reader.read_message())
 
-            if message_type == QUERY:
-                query = payload.rstrip(b"\x00").decode("utf-8")
-                print(f"[SQL] {query}")
-
-            elif message_type == TERMINATE:
-                print("[+] Client terminated")
+            if not dispatcher.dispatch(message_type, payload):
                 break
-            else:
-                print(f"[?] Message: {message_type!r}")
 
     except ConnectionError:
         print("[-] Connection closed")
